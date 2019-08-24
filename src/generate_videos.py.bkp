@@ -58,11 +58,12 @@ if __name__ == "__main__":
     num_videos = int(args['--num_videos'])
     output_folder = args['<output_folder>']
 
+    categories = int(args['--categories'])
+
     if not os.path.exists(output_folder):
         os.makedirs(output_folder)
 
     for i in range(num_videos):
-        v, _ = generator.sample_videos(1, int(args['--number_of_frames']))
+        v, _ = generator.sample_videos(1, int(args['--number_of_frames']),1)
         video = videos_to_numpy(v).squeeze().transpose((1, 2, 3, 0))
         save_video(args["--ffmpeg"], video, os.path.join(output_folder, "{}.{}".format(i, args['--output_format'])))
-

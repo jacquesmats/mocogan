@@ -228,21 +228,19 @@ class VideoGenerator(nn.Module):
 
         return z_m
 
-    def sample_z_categ(self, num_samples, video_len):
-
+    def sample_z_categ(self, num_samples, video_len, categories_to_gen=None):
         video_len = video_len if video_len is not None else self.video_length
-        print("self.dim_z_category: {}".format(self.dim_z_category))
+
         if self.dim_z_category <= 0:
             return None, np.zeros(num_samples)
 
-        classes_to_generate = np.array(1)
-       # classes_to_generate = np.random.randint(self.dim_z_category, size=num_samples)
-	print("classes_to_generate: {}".format(classes_to_generate))
-        one_hot = np.zeros((num_samples, self.dim_z_category), dtype=np.float32)
+#	if categories_to_gen:
+        classes_to_generate = np.asarray(2)
+#        else: classes_to_generate = np.random.randint(self.dim_z_category, size=num_samples)
 
+	one_hot = np.zeros((num_samples, self.dim_z_category), dtype=np.float32)
         one_hot[np.arange(num_samples), classes_to_generate] = 1
-
-	one_hot_video = np.repeat(one_hot, video_len, axis=0)
+        one_hot_video = np.repeat(one_hot, video_len, axis=0)
 
         one_hot_video = torch.from_numpy(one_hot_video)
 
@@ -255,21 +253,16 @@ class VideoGenerator(nn.Module):
         video_len = video_len if video_len is not None else self.video_length
 
         content = np.random.normal(0, 1, (num_samples, self.dim_z_content)).astype(np.float32)
-#        print("content: {}".format(content))
         content = np.repeat(content, video_len, axis=0)
         content = torch.from_numpy(content)
         if torch.cuda.is_available():
             content = content.cuda()
         return Variable(content)
 
-    def sample_z_video(self, num_samples, video_len=None):
+    def sample_z_video(self, num_samples, video_len=None, categories_to_gen=None):
         z_content = self.sample_z_content(num_samples, video_len)
-        z_category, z_category_labels = self.sample_z_categ(num_samples, video_len)
-        print("z_category: {}".format(z_category))
-
-        print("z_category_labels: {}".format(z_category_labels))
-
-	z_motion = self.sample_z_m(num_samples, video_len)
+        z_category, z_category_labels = self.sample_z_categ(num_samples, video_len, categories_to_gen)
+        z_motion = self.sample_z_m(num_samples, video_len)
 
         if z_category is not None:
             z = torch.cat([z_content, z_category, z_motion], dim=1)
@@ -278,12 +271,14 @@ class VideoGenerator(nn.Module):
 
         return z, z_category_labels
 
-    def sample_videos(self, num_samples, video_len=None):
-        print("#########################################")
-
+    def sample_videos(self, num_samples, video_len=None, categories_to_gen=None):
         video_len = video_len if video_len is not None else self.video_length
 
-        z, z_category_labels = self.sample_z_video(num_samples, video_len)
+        z, z_category_labels = self.sample_z_video(num_samples, video_len, categories_to_gen)
+
+        #Added by @jacquesmats on 21 Aug 2019
+        print("z:{} ".format(z))
+	print("z_cat: {} ".format(z_category_labels))
 
         h = self.main(z.view(z.size(0), z.size(1), 1, 1))
         h = h.view(h.size(0) / video_len, video_len, self.n_channels, h.size(3), h.size(3))
@@ -311,4 +306,3 @@ class VideoGenerator(nn.Module):
 
     def get_iteration_noise(self, num_samples):
         return Variable(T.FloatTensor(num_samples, self.dim_z_motion).normal_())
-
